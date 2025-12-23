@@ -22,7 +22,7 @@ export function Header() {
             <p className="text-xs text-gray-500">Control slides with hand gestures</p>
           </div>
         </div>
-        
+
         {/* Nav */}
         <nav className="flex items-center gap-6">
           <a
@@ -32,7 +32,7 @@ export function Header() {
             How it works
           </a>
           <a
-            href="https://github.com"
+            href="https://github.com/Jaruvit0867"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
