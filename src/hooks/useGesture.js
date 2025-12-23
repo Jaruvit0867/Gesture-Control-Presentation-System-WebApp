@@ -202,13 +202,18 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
     try {
       setError(null);
 
-      // Dynamically import MediaPipe
-      const { Hands } = await import('@mediapipe/hands');
-      const { Camera } = await import('@mediapipe/camera_utils');
+      // Use MediaPipe from global window object (loaded via CDN in index.html)
+      // This avoids bundling issues in production (e.g. "C is not a constructor")
+      const Hands = window.Hands;
+      const Camera = window.Camera;
+
+      if (!Hands || !Camera) {
+        throw new Error('MediaPipe scripts not loaded. Please check your internet connection.');
+      }
 
       const hands = new Hands({
         locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`;
         }
       });
 
