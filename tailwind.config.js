@@ -13,15 +13,16 @@ export default {
       },
       colors: {
         'dark': {
-          900: '#0a0a0f',
-          800: '#12121a',
-          700: '#1a1a25',
-          600: '#252532',
+          950: '#020617', // Deep background
+          900: '#0f172a', // Section background
+          800: '#1e293b', // Cards
+          700: '#334155', // Borders
+          600: '#475569', // Muted text
         },
         'accent': {
-          cyan: '#00f0ff',
-          purple: '#a855f7',
-          pink: '#f472b6',
+          primary: '#6366f1', // Indigo primary
+          secondary: '#10b981', // Emerald secondary
+          highlight: '#f43f5e', // Rose highlight
         }
       },
       animation: {

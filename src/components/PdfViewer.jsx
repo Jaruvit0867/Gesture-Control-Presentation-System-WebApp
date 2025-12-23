@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Upload, ChevronLeft, ChevronRight, FileText, Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,7 +15,9 @@ export function PdfViewer({
   slideDirection,
   isFullscreen,
   onToggleFullscreen,
+  pointer,
 }) {
+  const fileInputRef = useRef(null);
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
@@ -38,39 +40,40 @@ export function PdfViewer({
   return (
     <div className="flex flex-col h-full">
       {/* Header with file info */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-cyan/20 to-accent-purple/20 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-accent-cyan" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center border border-white/5">
+            <FileText className="w-6 h-6 text-accent-primary" />
           </div>
           <div>
-            <h2 className="font-display font-semibold text-white">
-              {fileName || 'No file loaded'}
+            <h2 className="font-display font-bold text-white tracking-tight">
+              {fileName || 'Document Viewer'}
             </h2>
             {totalPages > 0 && (
-              <p className="text-sm text-gray-400">
-                {totalPages} {totalPages === 1 ? 'page' : 'pages'}
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                {totalPages || 0} {totalPages === 1 ? 'Slide' : 'Slides'} Loaded
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={onToggleFullscreen}
-            className="p-2 rounded-xl bg-dark-600 hover:bg-dark-500 transition-colors text-gray-400 hover:text-white"
-            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            className="p-3 rounded-2xl bg-dark-800 hover:bg-dark-700 transition-all text-slate-400 hover:text-white border border-white/5 shadow-lg group"
+            title={isFullscreen ? "Minimize Viewer" : "Expand Viewer"}
           >
-            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5 group-hover:scale-110 transition-transform" />}
           </button>
-          <label className="cursor-pointer">
+          <label className="cursor-pointer group">
             <input
+              ref={fileInputRef}
               type="file"
               accept=".pdf"
               onChange={handleFileInput}
               className="hidden"
             />
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-600 hover:bg-dark-500 transition-colors text-sm font-medium text-white">
+            <div className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-accent-primary hover:bg-indigo-500 transition-all text-sm font-bold text-white shadow-lg shadow-accent-primary/20 group-hover:scale-[1.02]">
               <Upload className="w-4 h-4" />
               Upload PDF
             </div>
@@ -80,47 +83,71 @@ export function PdfViewer({
 
       {/* Main viewer area */}
       <div
-        className={`flex-1 relative rounded-2xl overflow-hidden gradient-border ${isFullscreen ? 'rounded-none border-none h-full w-full' : ''}`}
+        className={`flex-1 relative rounded-[2rem] overflow-hidden bg-dark-950 border border-white/5 shadow-inner ${isFullscreen ? 'rounded-none border-none h-full w-full' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
-        <div className="absolute inset-0 bg-dark-800 p-1">
+        <div className="absolute inset-0 p-1">
+          {/* Visual Pointer Overlay */}
+          {pointer?.isActive && (
+            <div
+              className="absolute w-6 h-6 bg-rose-500/40 border-2 border-rose-500 rounded-full z-50 pointer-events-none transition-all duration-75 shadow-[0_0_15px_rgba(244,63,94,0.6)]"
+              style={{
+                left: `${pointer.x * 100}%`,
+                top: `${pointer.y * 100}%`,
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              <div className="absolute inset-0 bg-rose-500 rounded-full animate-ping opacity-20" />
+            </div>
+          )}
+
           {/* Loading state */}
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-dark-800/80 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-dark-950/90 backdrop-blur-sm z-10">
               <div className="text-center">
-                <Loader2 className="w-10 h-10 text-accent-cyan animate-spin mx-auto" />
-                <p className="text-gray-400 mt-3">Loading PDF...</p>
+                <div className="relative w-16 h-16 mx-auto mb-4">
+                  <div className="absolute inset-0 rounded-full border-4 border-accent-primary/10" />
+                  <Loader2 className="absolute inset-0 w-16 h-16 text-accent-primary animate-spin" />
+                </div>
+                <p className="text-slate-400 font-medium tracking-wide">Syncing Assets...</p>
               </div>
             </div>
           )}
 
           {/* Error state */}
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center p-6">
-                <p className="text-red-400 font-medium">⚠️ {error}</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-dark-950/90 backdrop-blur-sm">
+              <div className="text-center p-8 glass rounded-[2rem] border-rose-500/20 max-w-sm">
+                <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <p className="text-2xl">⚠️</p>
+                </div>
+                <p className="text-rose-400 font-bold mb-2">Process Interrupted</p>
+                <p className="text-slate-400 text-sm">{error}</p>
               </div>
             </div>
           )}
 
           {/* Empty state - drop zone */}
           {!pageImage && !isLoading && !error && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center p-8">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-dark-700 flex items-center justify-center">
-                  <Upload className="w-10 h-10 text-gray-500" />
+            <div
+              className="absolute inset-0 flex items-center justify-center group cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="text-center p-12 glass rounded-[3rem] border-dashed border-slate-700/50 hover:border-accent-primary/50 transition-all">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-[2rem] bg-slate-900 flex items-center justify-center shadow-inner group-hover:scale-110 group-hover:bg-accent-primary/5 transition-all duration-500">
+                  <Upload className="w-12 h-12 text-slate-600 group-hover:text-accent-primary transition-colors" />
                 </div>
-                <p className="text-lg font-medium text-white mb-2">
-                  Drop your PDF here
+                <h3 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                  Import Presentation
+                </h3>
+                <p className="text-slate-500 text-sm mb-6 max-w-[200px] mx-auto">
+                  Drag and drop your PDF slides or click to browse files.
                 </p>
-                <p className="text-gray-500 text-sm mb-4">
-                  or click "Upload PDF" to select a file
-                </p>
-                <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-600">
-                  <span className="px-2 py-1 bg-dark-700 rounded">Presentations</span>
-                  <span className="px-2 py-1 bg-dark-700 rounded">Documents</span>
-                  <span className="px-2 py-1 bg-dark-700 rounded">Slides</span>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <span className="w-2 h-2 rounded-full bg-slate-800" />
+                  <span className="w-2 h-2 rounded-full bg-slate-800" />
+                  <span className="w-2 h-2 rounded-full bg-slate-800" />
                 </div>
               </div>
             </div>
@@ -160,27 +187,27 @@ export function PdfViewer({
 
       {/* Navigation controls */}
       {totalPages > 0 && (
-        <div className={`flex items-center justify-center gap-4 mt-4 ${isFullscreen ? 'fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] bg-dark-800/80 backdrop-blur-md p-2 rounded-2xl border border-white/10 shadow-2xl' : ''}`}>
+        <div className={`flex items-center justify-center gap-6 mt-6 ${isFullscreen ? 'fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] glass p-3 rounded-[2rem] border-white/10 shadow-3xl' : ''}`}>
           <button
             onClick={onPrevPage}
             disabled={currentPage <= 1}
             className={`
-              p-3 rounded-xl transition-all duration-200
+              p-4 rounded-2xl transition-all duration-300 border border-white/5
               ${currentPage <= 1
-                ? 'bg-dark-700 text-gray-600 cursor-not-allowed'
-                : 'bg-dark-600 text-white hover:bg-dark-500 hover:scale-105'}
+                ? 'bg-slate-900/50 text-slate-700 cursor-not-allowed opacity-50'
+                : 'bg-dark-800 text-white hover:bg-slate-700 hover:scale-110 shadow-lg active:scale-95'}
             `}
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
 
-          <div className="flex items-center gap-2 px-6 py-3 bg-dark-700 rounded-xl">
-            <span className="text-accent-cyan font-mono font-bold text-lg">
-              {currentPage}
+          <div className="flex items-center gap-3 px-8 py-3.5 bg-slate-900/80 rounded-2xl border border-white/5 shadow-inner backdrop-blur-md">
+            <span className="text-accent-primary font-mono font-black text-xl tracking-tighter">
+              {String(currentPage).padStart(2, '0')}
             </span>
-            <span className="text-gray-500">/</span>
-            <span className="text-gray-400 font-mono">
-              {totalPages}
+            <span className="text-slate-700 font-light text-xl">|</span>
+            <span className="text-slate-500 font-mono font-medium">
+              {String(totalPages).padStart(2, '0')}
             </span>
           </div>
 
@@ -188,10 +215,10 @@ export function PdfViewer({
             onClick={onNextPage}
             disabled={currentPage >= totalPages}
             className={`
-              p-3 rounded-xl transition-all duration-200
+              p-4 rounded-2xl transition-all duration-300 border border-white/5
               ${currentPage >= totalPages
-                ? 'bg-dark-700 text-gray-600 cursor-not-allowed'
-                : 'bg-dark-600 text-white hover:bg-dark-500 hover:scale-105'}
+                ? 'bg-slate-900/50 text-slate-700 cursor-not-allowed opacity-50'
+                : 'bg-dark-800 text-white hover:bg-slate-700 hover:scale-110 shadow-lg active:scale-95'}
             `}
           >
             <ChevronRight className="w-6 h-6" />
@@ -200,7 +227,7 @@ export function PdfViewer({
           {isFullscreen && (
             <button
               onClick={onToggleFullscreen}
-              className="p-3 rounded-xl bg-dark-600 text-white hover:bg-dark-500 transition-all hover:scale-105"
+              className="p-4 rounded-2xl bg-slate-100 text-dark-950 hover:bg-white transition-all hover:scale-110 shadow-xl active:scale-95"
             >
               <Minimize2 className="w-6 h-6" />
             </button>

@@ -11,6 +11,7 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
     fingerCount: 0,
     confidence: 0,
   });
+  const [pointer, setPointer] = useState({ x: 0, y: 0, isActive: false });
   const [error, setError] = useState(null);
 
   const videoRef = useRef(null);
@@ -18,6 +19,14 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
   const handsRef = useRef(null);
   const cameraRef = useRef(null);
   const animationRef = useRef(null);
+
+  const pointerRef = useRef({ x: 0, y: 0, isActive: false });
+  const pointerDropoutRef = useRef(0); // For keeping pointer active during brief tracking loss
+  const SMOOTHING = 0.25; // Lower = smoother, higher = more responsive (EMA factor)
+
+  const consecutiveFistRef = useRef(0);
+  const consecutiveReadyRef = useRef(0);
+  const consecutiveSwipeRef = useRef(0);
 
   // Swipe detection state
   const swipeRef = useRef({
@@ -36,31 +45,32 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
     callbacksRef.current = { onSwipeLeft, onSwipeRight, onPause };
   }, [onSwipeLeft, onSwipeRight, onPause]);
 
-  // Count fingers
+  // Count fingers using distance from wrist (more robust than Y-axis only)
   const countFingers = useCallback((landmarks, isRightHand) => {
     const fingers = [0, 0, 0, 0, 0];
+    const wrist = landmarks[0];
 
-    // Thumb - check X axis
+    // Thumb detection: uses distance from Index MCP (landmark 5) and Pinky MCP (landmark 17)
+    // or just distance from wrist compared to Tip 4 vs IP 3
     const thumbTip = landmarks[4];
     const thumbIp = landmarks[3];
-    const palmCenter = landmarks[9];
+    const thumbMcp = landmarks[2];
 
-    if (isRightHand) {
-      fingers[0] = thumbTip.x < thumbIp.x - 0.02 ? 1 : 0;
-    } else {
-      fingers[0] = thumbTip.x > thumbIp.x + 0.02 ? 1 : 0;
-    }
+    const distThumbTip = Math.sqrt(Math.pow(thumbTip.x - wrist.x, 2) + Math.pow(thumbTip.y - wrist.y, 2));
+    const distThumbIp = Math.sqrt(Math.pow(thumbIp.x - wrist.x, 2) + Math.pow(thumbIp.y - wrist.y, 2));
 
-    // Check if thumb is away from palm
-    if (Math.abs(thumbTip.x - palmCenter.x) < 0.08) {
-      fingers[0] = 0;
-    }
+    // Thumb is open if tip is further from wrist than IP joint
+    fingers[0] = distThumbTip > distThumbIp + 0.01 ? 1 : 0;
 
-    // Other fingers - check Y axis
+    // Other fingers - check distance from wrist tip vs pip
     for (let i = 1; i < 5; i++) {
-      const tipY = landmarks[FINGER_TIPS[i]].y;
-      const pipY = landmarks[FINGER_PIPS[i]].y;
-      fingers[i] = (pipY - tipY) > 0.02 ? 1 : 0;
+      const tip = landmarks[FINGER_TIPS[i]];
+      const pip = landmarks[FINGER_PIPS[i]];
+
+      const dTip = Math.sqrt(Math.pow(tip.x - wrist.x, 2) + Math.pow(tip.y - wrist.y, 2));
+      const dPip = Math.sqrt(Math.pow(pip.x - wrist.x, 2) + Math.pow(pip.y - wrist.y, 2));
+
+      fingers[i] = dTip > dPip + 0.015 ? 1 : 0;
     }
 
     return fingers;
@@ -107,11 +117,18 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
     const now = Date.now();
 
     if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-      setGesture({
-        name: 'SCANNING',
-        fingerCount: 0,
-        confidence: 0,
-      });
+      consecutiveFistRef.current = 0;
+      consecutiveReadyRef.current = 0;
+      consecutiveSwipeRef.current = 0;
+
+      // OPTIMIZATION: Keep pointer for few more frames even if hand lost
+      if (pointerDropoutRef.current > 0) {
+        pointerDropoutRef.current--;
+      } else {
+        setGesture({ name: 'SCANNING', fingerCount: 0, confidence: 0 });
+        setPointer(prev => ({ ...prev, isActive: false }));
+      }
+
       swipeRef.current.startX = null;
       return;
     }
@@ -123,74 +140,104 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
 
     const fingers = countFingers(landmarks, isRightHand);
     const totalFingers = fingers.reduce((a, b) => a + b, 0);
-    const nonThumbFingers = fingers.slice(1).reduce((a, b) => a + b, 0);
-
     const palmX = landmarks[9].x;
 
-    // Fist detection
-    if (nonThumbFingers === 0) {
-      lastFistTimeRef.current = now;
-      swipeRef.current.startX = null;
+    // 1. Fist detection (Zero fingers)
+    if (totalFingers === 0) {
+      consecutiveFistRef.current++;
+      consecutiveReadyRef.current = 0;
+      consecutiveSwipeRef.current = 0;
 
-      setGesture({
-        name: 'PAUSED',
-        fingerCount: totalFingers,
-        confidence,
-      });
-      onPause?.();
-      return;
-    }
-
-    // Open hand - swipe mode
-    if (totalFingers >= 4) {
-      lastOpenTimeRef.current = now;
-
-      const swipeDirection = detectSwipe(palmX);
-
-      if (swipeDirection === 'left') {
-        callbacksRef.current.onSwipeRight?.(); // Swap: Swipe left on screen (hand move to user right) -> Next
-        setGesture({
-          name: 'SWIPE_RIGHT',
-          fingerCount: totalFingers,
-          confidence,
-        });
-      } else if (swipeDirection === 'right') {
-        callbacksRef.current.onSwipeLeft?.(); // Swap: Swipe right on screen (hand move to user left) -> Prev
-        setGesture({
-          name: 'SWIPE_LEFT',
-          fingerCount: totalFingers,
-          confidence,
-        });
-      } else {
-        setGesture({
-          name: 'SWIPE_READY',
-          fingerCount: totalFingers,
-          confidence,
-        });
+      if (consecutiveFistRef.current >= 10) {
+        if (gesture.name !== 'PAUSED') {
+          lastFistTimeRef.current = now;
+          onPause?.();
+        }
+        swipeRef.current.startX = null;
+        setGesture({ name: 'PAUSED', fingerCount: totalFingers, confidence });
+        setPointer(prev => ({ ...prev, isActive: false }));
+        return;
       }
-      return;
     }
+    // 2. Open hand - swipe mode (4+ fingers)
+    else if (totalFingers >= 4) {
+      consecutiveSwipeRef.current++;
+      consecutiveFistRef.current = 0;
+      consecutiveReadyRef.current = 0;
 
-    // Check delays
-    const fistDelayOk = now - lastFistTimeRef.current > 600;
-    const openDelayOk = now - lastOpenTimeRef.current > 500;
+      if (consecutiveSwipeRef.current >= 4) {
+        lastOpenTimeRef.current = now;
+        const swipeDirection = detectSwipe(palmX);
 
-    if (fistDelayOk && openDelayOk) {
-      setGesture({
-        name: 'READY',
-        fingerCount: totalFingers,
-        confidence,
-      });
-    } else {
-      setGesture({
-        name: 'STABILIZING',
-        fingerCount: totalFingers,
-        confidence,
-      });
+        if (swipeDirection === 'left') {
+          callbacksRef.current.onSwipeRight?.();
+          setGesture({ name: 'SWIPE_RIGHT', fingerCount: totalFingers, confidence });
+        } else if (swipeDirection === 'right') {
+          callbacksRef.current.onSwipeLeft?.();
+          setGesture({ name: 'SWIPE_LEFT', fingerCount: totalFingers, confidence });
+        } else {
+          setGesture({ name: 'SWIPE_READY', fingerCount: totalFingers, confidence });
+        }
+        setPointer(prev => ({ ...prev, isActive: false }));
+        return;
+      }
+    }
+    // 3. Ready / Pointer / Stabilizing
+    else {
+      consecutiveFistRef.current = 0;
+      consecutiveSwipeRef.current = 0;
+
+      const fistDelayOk = now - lastFistTimeRef.current > 300;
+      const openDelayOk = now - lastOpenTimeRef.current > 300;
+
+      if (fistDelayOk && openDelayOk) {
+        consecutiveReadyRef.current++;
+
+        if (consecutiveReadyRef.current >= 3) {
+          setGesture({ name: 'READY', fingerCount: totalFingers, confidence });
+
+          // Index finger pointer mode
+          if (totalFingers === 1 && fingers[1] === 1) {
+            const indexTip = landmarks[8];
+
+            // ROI Mapping: Use only the central 70% of the camera frame (0.15 to 0.85)
+            // This means user doesn't have to reach the extreme edges of camera to reach screen corners
+            const roiMin = 0.15;
+            const roiMax = 0.85;
+            const roiRange = roiMax - roiMin;
+
+            const mapROI = (val) => Math.max(0, Math.min(1, (val - roiMin) / roiRange));
+
+            const rawX = 1 - mapROI(indexTip.x); // Mirrored & Mapped
+            const rawY = mapROI(indexTip.y);     // Mapped
+
+            // EMA Smoothing
+            const newX = rawX * SMOOTHING + pointerRef.current.x * (1 - SMOOTHING);
+            const newY = rawY * SMOOTHING + pointerRef.current.y * (1 - SMOOTHING);
+
+            pointerRef.current = { x: newX, y: newY, isActive: true };
+            pointerDropoutRef.current = 20;
+
+            setPointer({ x: newX, y: newY, isActive: true });
+          } else {
+            // OPTIMIZATION: If tracking lost but we were just in pointer, apply dropout
+            if (pointerDropoutRef.current > 0) {
+              pointerDropoutRef.current--;
+            } else {
+              setPointer(prev => ({ ...prev, isActive: false }));
+            }
+          }
+        } else {
+          setGesture({ name: 'STABILIZING', fingerCount: totalFingers, confidence });
+        }
+      } else {
+        setGesture({ name: 'STABILIZING', fingerCount: totalFingers, confidence });
+        setPointer(prev => ({ ...prev, isActive: false }));
+      }
     }
 
     swipeRef.current.startX = null;
-  }, [countFingers, detectSwipe]);
+  }, [countFingers, detectSwipe, gesture.name, onPause]);
 
   // Stable wrapper for onResults to pass to MediaPipe
   const stableOnResultsWrapper = useCallback((results) => {
@@ -219,9 +266,9 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
 
       hands.setOptions({
         maxNumHands: 1,
-        modelComplexity: 0,
+        modelComplexity: 1,
         minDetectionConfidence: 0.7,
-        minTrackingConfidence: 0.6,
+        minTrackingConfidence: 0.65,
       });
 
       hands.onResults((results) => onResults(results));
@@ -302,6 +349,7 @@ export function useGesture({ onSwipeLeft, onSwipeRight, onPause }) {
     canvasRef,
     isActive,
     gesture,
+    pointer,
     error,
     start,
     stop,
