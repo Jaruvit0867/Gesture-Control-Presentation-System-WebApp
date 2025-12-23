@@ -29,7 +29,7 @@ export function Header() {
             Capabilities
           </a>
           <a
-            href="https://github.com/Jaruvit0867/Gesture-Control-Presentation-System-WebApp/tree/v2-cursor"
+            href="https://github.com/Jaruvit0867/Gesture-Control-Presentation-System-WebApp"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-dark-800 hover:bg-dark-700 border border-white/5 transition-all text-sm font-medium text-white shadow-xl"
