@@ -32,7 +32,7 @@ export function Header() {
             How it works
           </a>
           <a
-            href="https://github.com/Jaruvit0867"
+            href="https://github.com/Jaruvit0867/Gesture-Control-Presentation-System-WebApp"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 transition-colors text-sm"
