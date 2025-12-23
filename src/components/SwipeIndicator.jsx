@@ -17,24 +17,21 @@ export function SwipeIndicator({ direction, isVisible }) {
             initial={{ x: direction === 'left' ? 50 : -50 }}
             animate={{ x: 0 }}
             className={`
-              flex items-center gap-4 px-8 py-6 rounded-2xl
-              bg-gradient-to-r 
-              ${direction === 'left' 
-                ? 'from-purple-500/30 to-cyan-500/30' 
-                : 'from-cyan-500/30 to-purple-500/30'}
-              backdrop-blur-xl border border-white/10
+              flex items-center gap-6 px-10 py-8 rounded-[2.5rem]
+              bg-accent-primary/10 border border-accent-primary/20
+              backdrop-blur-2xl shadow-3xl shadow-accent-primary/20
             `}
           >
             {direction === 'left' && (
-              <ChevronLeft className="w-10 h-10 text-purple-400" />
+              <ChevronLeft className="w-12 h-12 text-accent-primary animate-pulse" />
             )}
-            
-            <span className="text-3xl font-display font-bold text-white">
+
+            <span className="text-4xl font-display font-black text-white tracking-tight uppercase">
               {direction === 'left' ? 'Previous' : 'Next'}
             </span>
-            
+
             {direction === 'right' && (
-              <ChevronRight className="w-10 h-10 text-cyan-400" />
+              <ChevronRight className="w-12 h-12 text-accent-primary animate-pulse" />
             )}
           </motion.div>
         </motion.div>
