@@ -50,7 +50,6 @@ function App() {
     videoRef,
     isActive: cameraActive,
     gesture,
-    pointer,
     error: cameraError,
     start: startCamera,
     stop: stopCamera,
@@ -126,33 +125,33 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-dark-950 relative overflow-hidden">
-      {/* Background blobs */}
+    <div className="min-h-screen bg-dark-900 relative noise">
+      {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="bg-blob animate-blob w-[500px] h-[500px] bg-accent-primary/20 top-[-10%] left-[-10%]" />
-        <div className="bg-blob animate-blob w-[400px] h-[400px] bg-accent-secondary/15 bottom-[-5%] right-[-5%]" style={{ animationDelay: '2s' }} />
-        <div className="bg-blob animate-blob w-[600px] h-[600px] bg-purple-500/10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style={{ animationDelay: '5s' }} />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-accent-cyan/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-purple/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent-pink/5 rounded-full blur-3xl" />
       </div>
 
       <Header />
 
       {/* Main content */}
-      <main className="relative z-10 px-6 pb-12">
+      <main className="relative z-10 px-8 pb-12">
         <div className="max-w-7xl mx-auto">
           {/* Hero text */}
           {!isFullscreen && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="text-center mb-12 pt-8"
+              transition={{ duration: 0.6 }}
+              className="text-center mb-8"
             >
-              <h2 className="font-display text-5xl md:text-6xl font-bold text-white tracking-tight mb-6">
-                Redefine Your <span className="gradient-text">Presentation</span>
+              <h2 className="font-display text-4xl md:text-5xl font-bold text-white mb-4">
+                Present with <span className="gradient-text">Gestures</span>
               </h2>
-              <p className="text-slate-400 text-xl max-w-2xl mx-auto leading-relaxed">
-                Control your slides with natural hand gestures.
-                Experience a seamless, hands-free presenting experience.
+              <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+                Upload your PDF and control your presentation using hand gestures.
+                No more clicking – just natural hand movements.
               </p>
             </motion.div>
           )}
@@ -161,18 +160,18 @@ function App() {
           <motion.div
             ref={viewerContainerRef}
             className={`
-              grid gap-8 transition-all duration-700
+              grid gap-6 transition-all duration-500
               ${isFullscreen
-                ? 'fixed inset-0 z-50 bg-dark-950 grid-cols-1 p-0 m-0'
+                ? 'fixed inset-0 z-50 bg-dark-900 grid-cols-1 p-0 m-0'
                 : 'grid-cols-1 lg:grid-cols-3'}
             `}
           >
             {/* PDF Viewer - Primary Area */}
             <div className={`
-              transition-all duration-700 ease-in-out
+              transition-all duration-500
               ${isFullscreen
                 ? 'col-span-1 h-screen w-screen'
-                : 'lg:col-span-2 glass rounded-3xl p-8 h-[650px] shadow-2xl'}
+                : 'lg:col-span-2 glass rounded-2xl p-6 h-[600px]'}
             `}>
               <PdfViewer
                 pageImage={pageImage}
@@ -187,7 +186,6 @@ function App() {
                 slideDirection={slideDirection}
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={handleToggleFullscreen}
-                pointer={pointer}
               />
             </div>
 
@@ -210,39 +208,27 @@ function App() {
 
               {/* Tips only in non-fullscreen */}
               {!isFullscreen && (
-                <div className="mt-6 glass rounded-2xl p-6 shadow-xl border-white/5">
-                  <h3 className="font-display font-bold text-white mb-4 flex items-center gap-2">
-                    <span className="text-accent-primary">✦</span> Quick Tips
+                <div className="mt-4 glass rounded-xl p-4">
+                  <h3 className="font-display font-semibold text-white mb-2 flex items-center gap-2">
+                    <span>💡</span> Quick Tips
                   </h3>
-                  <ul className="space-y-4 text-sm text-slate-400">
-                    <li className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-accent-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent-primary" />
-                      </div>
+                  <ul className="space-y-2 text-sm text-gray-400">
+                    <li className="flex items-start gap-2">
+                      <span className="text-accent-cyan">→</span>
                       Use arrow keys for manual navigation
                     </li>
-                    <li className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-accent-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent-primary" />
-                      </div>
+                    <li className="flex items-start gap-2">
+                      <span className="text-accent-cyan">→</span>
                       Keep your hand within the camera frame
                     </li>
-                    <li className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-accent-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent-primary" />
-                      </div>
+                    <li className="flex items-start gap-2">
+                      <span className="text-accent-cyan">→</span>
                       Make a fist to pause gesture detection
                     </li>
                   </ul>
                 </div>
               )}
             </div>
-
-            {/* Swipe indicator overlay - moved inside fullscreen container */}
-            <SwipeIndicator
-              direction={swipeIndicator.direction}
-              isVisible={swipeIndicator.visible}
-            />
           </motion.div>
 
           {/* How it works section */}
@@ -250,60 +236,50 @@ function App() {
             <motion.section
               id="how-it-works"
               initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="mt-24"
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="mt-16"
             >
-              <div className="text-center mb-12">
-                <h3 className="font-display text-4xl font-bold text-white mb-4">
-                  How it Works
-                </h3>
-                <p className="text-slate-400 max-w-2xl mx-auto">
-                  Our system uses advanced computer vision to translate your hand movements
-                  into presentation controls in real-time.
-                </p>
-              </div>
+              <h3 className="font-display text-2xl font-bold text-white text-center mb-8">
+                How It Works
+              </h3>
 
-              <div className="grid md:grid-cols-3 gap-8">
+              <div className="grid md:grid-cols-3 gap-6">
                 {[
                   {
                     step: '01',
                     title: 'Upload PDF',
-                    desc: 'Drag and drop or click to upload your presentation PDF directly.',
+                    desc: 'Drag and drop or click to upload your presentation PDF',
                     icon: '📄',
                   },
                   {
                     step: '02',
                     title: 'Start Camera',
-                    desc: 'Enable your webcam. All processing happens locally on your device.',
+                    desc: 'Enable your webcam for hand gesture detection',
                     icon: '📷',
                   },
                   {
                     step: '03',
                     title: 'Present!',
-                    desc: 'Swipe with an open hand to navigate slides naturally.',
+                    desc: 'Swipe left/right with open hand to navigate slides',
                     icon: '✨',
                   },
                 ].map((item, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
-                    className="glass rounded-3xl p-8 relative group card-hover border-white/5"
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.6 + i * 0.1 }}
+                    className="glass rounded-xl p-6 relative group hover:scale-105 transition-transform duration-300"
                   >
-                    <span className="absolute top-6 right-8 font-mono text-5xl font-bold text-white/5 group-hover:text-accent-primary/10 transition-colors">
+                    <span className="absolute top-4 right-4 font-mono text-4xl font-bold text-dark-600 group-hover:text-dark-500 transition-colors">
                       {item.step}
                     </span>
-                    <div className="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-                      {item.icon}
-                    </div>
-                    <h4 className="font-display font-bold text-white text-xl mb-3">
+                    <span className="text-4xl mb-4 block">{item.icon}</span>
+                    <h4 className="font-display font-semibold text-white text-lg mb-2">
                       {item.title}
                     </h4>
-                    <p className="text-slate-400 leading-relaxed text-sm">{item.desc}</p>
+                    <p className="text-gray-400 text-sm">{item.desc}</p>
                   </motion.div>
                 ))}
               </div>
@@ -312,21 +288,18 @@ function App() {
         </div>
       </main>
 
-
+      {/* Swipe indicator overlay */}
+      <SwipeIndicator
+        direction={swipeIndicator.direction}
+        isVisible={swipeIndicator.visible}
+      />
 
       {/* Footer */}
       {!isFullscreen && (
-        <footer className="relative z-10 py-12 text-center text-slate-500 border-t border-white/5 mt-12">
-          <p className="font-medium">SmartPresentation</p>
-          <div className="flex items-center justify-center gap-4 mt-2 text-xs">
-            <span>Built with React</span>
-            <span className="w-1 h-1 rounded-full bg-slate-700" />
-            <span>MediaPipe</span>
-            <span className="w-1 h-1 rounded-full bg-slate-700" />
-            <span>PDF.js</span>
-          </div>
-          <p className="mt-4 text-xs opacity-60">
-            Private • Secure • Browser-based
+        <footer className="relative z-10 py-8 text-center text-gray-500 text-sm">
+          <p>Built with React, MediaPipe & PDF.js</p>
+          <p className="mt-1">
+            Free to use • No data collected • Runs entirely in your browser
           </p>
         </footer>
       )}
